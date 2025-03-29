@@ -1,5 +1,8 @@
 # obsidian-github-exporter
 
+> [!CAUTION]
+> This is a first rough draft. It works. But use at your own risk. Try it with test vaults. I still have to document it further.
+
 This Obsidian plugin is intended to publish selected pages and their linked media to GitHub. 
 
 It takes as reference the already existing [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-garden)
