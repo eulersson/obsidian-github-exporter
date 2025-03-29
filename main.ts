@@ -82,6 +82,15 @@ export default class GitHubExporterPlugin extends Plugin {
 			}
 		});
 
+		// Add upload current file command
+		this.addCommand({
+			id: 'upload-current-file',
+			name: 'Upload Current File to GitHub',
+			callback: () => {
+				this.uploadCurrentFile();
+			}
+		});
+
 		// Add toggle publish command
 		this.addCommand({
 			id: 'toggle-publish',
@@ -414,6 +423,37 @@ export default class GitHubExporterPlugin extends Plugin {
 		} catch (error) {
 			console.error('Error publishing to GitHub:', error);
 			new Notice('Error publishing to GitHub: ' + error.message);
+		}
+	}
+
+	async uploadCurrentFile() {
+		try {
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const file: TFile | null = activeView?.file || this.app.workspace.getActiveFile();
+			
+			if (!file) {
+				new Notice('No active file');
+				return;
+			}
+
+			new Notice(`Starting upload of ${file.path}...`);
+			
+			// Process the current file
+			const stats = await this.processFile(file);
+			
+			// Show detailed report
+			const report = [
+				`Pages: ${stats.pages.added} added, ${stats.pages.updated} updated, ${stats.pages.deleted} deleted`,
+				`Media: ${stats.media.added} added, ${stats.media.updated} updated, ${stats.media.deleted} deleted`
+			].join('\n');
+			
+			console.log('File processed successfully!');
+			console.log('Final statistics:', report);
+			
+			new Notice('Successfully uploaded to GitHub!\n' + report);
+		} catch (error) {
+			console.error('Error uploading to GitHub:', error);
+			new Notice('Error uploading to GitHub: ' + error.message);
 		}
 	}
 
