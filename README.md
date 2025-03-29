@@ -1,94 +1,90 @@
-# Obsidian Sample Plugin
+<div align="center">
+  <picture>
+    <img style="height: 256px" alt="obsidian-github-exporter Logo" src="./logo.png" />
+  </picture>
+  <h1>Obsidian GitHub Exporter</h1>
+</div>
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+This Obsidian plugin is intended to publish selected pages and their linked
+media to a folder within a GitHub repository. You most likely want that
+repository to be a Quartz repository if you want to publish it as live notes,
+and therefore [Quartz' Guide on
+Hosting](https://quartz.jzhao.xyz/hosting#cloudflare-pages) will be relevant for
+you.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+This project takes as reference the already existing [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-garden).
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+# Features
 
-## First time developing plugins?
+- Pages marked with the `publish: true` property will be processed.
+- Linked images and audios (only `.mp3` and `.wav` for now) are collected.
+- Deleted local notes and media will be deleted on the remote repository too.
+- Copy the final published URL (quartz-style).
 
-Quick starting guide for new plugin devs:
+# Configuration
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+- GitHub repository name, username, token, since it uses GitHub API (using
+`Octokit`).
+- Base URL where your HTML is being generated (optional, only for clipboard
+copying the preview URL)
 
-## Releasing new releases
+> [!NOTE]
+> Your GitHub personal access token ideally should allow reading and writing to
+> the quartz repository. Read [GitHub's
+> guide](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+> on the topic. A fine-grained token with **Content** access to your quartz repo
+> is sufficient.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+Example defaults (those are actually the ones I use):
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+- GitHub Token `github_pat_[...]`
+- GitHub Username `eulersson`
+- GitHub Repository `notes`
+- Target Branch `main`
+- Target Directory `content`
+- Hosted URL `https://notes.ramn.dev`
 
-## Adding your plugin to the community plugin list
+# Reason
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+Sometimes projects like [Quartz](https://quartz.jzhao.xyz/) offer a very good solution
+to generate static sites but it wants the notes to live within your repository, so at
+every push Quartz filters the notes and generates the HTML static website under `publish/`
+for GitHub Pages to serve. This also allows showing  the note's date based on the GitHub
+object.
 
-## How to use
+However for those who don't want to have their entire vault within the
+`content/` (symlinked or not) within the `quartz` repo folder, this plugin was
+developed, which basically by running an Obsidian action it publishes the pages
+to the repository that generates the static website.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+The [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-garden) does
+this for [Obsidian Digital Gardens](https://dg-docs.ole.dev/), but before pushing to
+your GitHub repository it does many transformations we don't need if you simply
+want to copy the file.
 
-## Manually installing the plugin
+# Automatic Quartz Deployment
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+This serves only to publish the files to another repository, which in my case
+it's a [Quartz](https://quartz.jzhao.xyz/) repository.
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+For deploying and hosting the quartz live application you should follow Quartz's
+[Hosting Guide](https://quartz.jzhao.xyz/hosting), in my case I followed the
+**Cloudflare Pages** workflow and it works very well.
 
-## Funding URL
+# Personal Workflow
 
-You can include funding URLs where people who use your plugin can financially support it.
+If you want to use [Quartz](https://quartz.jzhao.xyz/) this is how I set it up:
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+- I forked the repository.
+- I cloned the repository.
+- Now the `v4` default branch will always sync the forked repository's one.
+- I created my branch `custom` branching off `v4` to add my own customizations on top of them.
+- I branched off `custom` with a `main` branch where this plugin will put all the markdown and file changes (within the
+`content/` folder).
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+Then any push to main trigger the automatic deployment as you set up [Hosting
+Guide](https://quartz.jzhao.xyz/hosting).
 
-If you have multiple URLs, you can also do:
+# Development
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+Follow [Obsidian's Development Guide](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin).
