@@ -2,6 +2,55 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 import { Octokit } from '@octokit/core';
 import * as crypto from 'crypto';
 
+// Add type declaration for Web Crypto API
+declare global {
+	interface Window {
+		crypto: {
+			subtle: {
+				digest(algorithm: string, data: ArrayBuffer): Promise<ArrayBuffer>;
+			};
+		};
+	}
+}
+
+// Helper functions for base64 encoding/decoding
+function base64Encode(str: string): string {
+	return btoa(unescape(encodeURIComponent(str)));
+}
+
+function base64Decode(str: string): string {
+	return decodeURIComponent(escape(atob(str)));
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+	const binary = String.fromCharCode(...new Uint8Array(buffer));
+	return base64Encode(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+	const binary = base64Decode(base64);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	return bytes.buffer;
+}
+
+// Helper function to calculate SHA-1 hash
+async function calculateSHA1(data: ArrayBuffer): Promise<string> {
+	// Use the Web Crypto API if available, otherwise fall back to Node.js crypto
+	if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+		const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	} else {
+		// Fallback to Node.js crypto
+		const hash = crypto.createHash('sha1');
+		hash.update(Buffer.from(data));
+		return hash.digest('hex');
+	}
+}
+
 // Remember to rename these classes and interfaces!
 
 interface GitHubExporterSettings {
@@ -217,10 +266,14 @@ export default class GitHubExporterPlugin extends Plugin {
 
 				if (existingFile) {
 					// Calculate SHA of new content
-					const contentBuffer = Buffer.from(content);
-					const header = `blob ${contentBuffer.length}\0`;
-					const buffer = Buffer.concat([Buffer.from(header), contentBuffer]);
-					const newSha = crypto.createHash('sha1').update(buffer).digest('hex');
+					const encoder = new TextEncoder();
+					const contentBytes = encoder.encode(content);
+					const header = `blob ${contentBytes.length}\0`;
+					const headerBytes = encoder.encode(header);
+					const combinedBytes = new Uint8Array(headerBytes.length + contentBytes.length);
+					combinedBytes.set(headerBytes);
+					combinedBytes.set(contentBytes, headerBytes.length);
+					const newSha = await calculateSHA1(combinedBytes.buffer);
 
 					if (newSha === existingFile.sha) {
 						console.log(`File ${path} hasn't changed, skipping update`);
@@ -232,8 +285,8 @@ export default class GitHubExporterPlugin extends Plugin {
 						const { data: blob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
 							owner: this.settings.githubUsername,
 							repo: this.settings.githubRepo,
-							content: content,
-							encoding: 'utf-8'
+							content: arrayBufferToBase64(contentBytes),
+							encoding: 'base64'
 						});
 						blobSha = blob.sha;
 					}
@@ -241,11 +294,13 @@ export default class GitHubExporterPlugin extends Plugin {
 					new Notice(`Creating ${path}...`);
 					stats.pages.added++;
 					// Create new blob for new content
+					const encoder = new TextEncoder();
+					const contentBytes = encoder.encode(content);
 					const { data: blob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
 						owner: this.settings.githubUsername,
 						repo: this.settings.githubRepo,
-						content: content,
-						encoding: 'utf-8'
+						content: arrayBufferToBase64(contentBytes),
+						encoding: 'base64'
 					});
 					blobSha = blob.sha;
 				}
@@ -279,10 +334,13 @@ export default class GitHubExporterPlugin extends Plugin {
 
 					if (existingMedia) {
 						// Calculate SHA of new media content
-						const mediaBuffer = Buffer.from(mediaContent);
-						const header = `blob ${mediaBuffer.length}\0`;
-						const buffer = Buffer.concat([Buffer.from(header), mediaBuffer]);
-						const newSha = crypto.createHash('sha1').update(buffer).digest('hex');
+						const mediaBytes = new Uint8Array(mediaContent);
+						const header = `blob ${mediaBytes.length}\0`;
+						const headerBytes = new TextEncoder().encode(header);
+						const combinedBytes = new Uint8Array(headerBytes.length + mediaBytes.length);
+						combinedBytes.set(headerBytes);
+						combinedBytes.set(mediaBytes, headerBytes.length);
+						const newSha = await calculateSHA1(combinedBytes.buffer);
 
 						if (newSha === existingMedia.sha) {
 							console.log(`Media file ${mediaPath} hasn't changed, skipping update`);
@@ -294,7 +352,7 @@ export default class GitHubExporterPlugin extends Plugin {
 							const { data: mediaBlob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
 								owner: this.settings.githubUsername,
 								repo: this.settings.githubRepo,
-								content: Buffer.from(mediaContent).toString('base64'),
+								content: arrayBufferToBase64(mediaContent),
 								encoding: 'base64'
 							});
 							mediaBlobSha = mediaBlob.sha;
@@ -306,7 +364,7 @@ export default class GitHubExporterPlugin extends Plugin {
 						const { data: mediaBlob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
 							owner: this.settings.githubUsername,
 							repo: this.settings.githubRepo,
-							content: Buffer.from(mediaContent).toString('base64'),
+							content: arrayBufferToBase64(mediaContent),
 							encoding: 'base64'
 						});
 						mediaBlobSha = mediaBlob.sha;
@@ -345,7 +403,7 @@ export default class GitHubExporterPlugin extends Plugin {
 					}) as { data: GitHubContentResponse };
 
 					if (response.data.content) {
-						const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
+						const content = base64Decode(response.data.content);
 						const mediaFiles = this.getLinkedMedia(content);
 						for (const mediaFile of mediaFiles) {
 							const mediaFilename = mediaFile.split('/').pop() || '';
@@ -496,10 +554,14 @@ export default class GitHubExporterPlugin extends Plugin {
 			// If file exists and content hasn't changed, skip the push
 			if (fileExists && currentSha) {
 				// Calculate SHA locally using Git's object format
-				const contentBuffer = Buffer.from(content);
-				const header = `blob ${contentBuffer.length}\0`;
-				const buffer = Buffer.concat([Buffer.from(header), contentBuffer]);
-				const localSha = crypto.createHash('sha1').update(buffer).digest('hex');
+				const encoder = new TextEncoder();
+				const contentBytes = encoder.encode(content);
+				const header = `blob ${contentBytes.length}\0`;
+				const headerBytes = encoder.encode(header);
+				const combinedBytes = new Uint8Array(headerBytes.length + contentBytes.length);
+				combinedBytes.set(headerBytes);
+				combinedBytes.set(contentBytes, headerBytes.length);
+				const localSha = await calculateSHA1(combinedBytes.buffer);
 
 				console.log(`Local SHA: ${localSha}, Current SHA: ${currentSha}`);
 
@@ -518,7 +580,7 @@ export default class GitHubExporterPlugin extends Plugin {
 				repo: this.settings.githubRepo,
 				path: `${this.settings.targetDir}/${path}`,
 				message: fileExists ? `Update ${path}` : `Add ${path}`,
-				content: Buffer.from(content).toString('base64'),
+				content: base64Encode(content),
 				branch: this.settings.targetBranch,
 			};
 
@@ -599,7 +661,7 @@ export default class GitHubExporterPlugin extends Plugin {
 				repo: this.settings.githubRepo,
 				path: remotePath,
 				message: `Update media ${path}`,
-				content: Buffer.from(content).toString('base64'),
+				content: arrayBufferToBase64(content),
 				sha: response.data.sha,
 				branch: this.settings.targetBranch
 			});
@@ -615,7 +677,7 @@ export default class GitHubExporterPlugin extends Plugin {
 					repo: this.settings.githubRepo,
 					path: remotePath,
 					message: `Add media ${path}`,
-					content: Buffer.from(content).toString('base64'),
+					content: arrayBufferToBase64(content),
 					branch: this.settings.targetBranch
 				});
 				console.log(`Successfully created new media file ${path}`);
