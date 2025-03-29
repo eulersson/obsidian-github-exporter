@@ -2,10 +2,8 @@
 
 This Obsidian plugin is intended to publish selected pages and their linked media to GitHub. 
 
-It takes as reference the already existing [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-garden)
-which has been cloned here as reference into `./reference` in this
-repository for you to investigate if need be, specially the part on the GitHub
-settings.
+It takes as reference the already existing [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-garden) which has been cloned here as reference into `./reference` in this
+repository for you to investigate if need be, specially the part on the GitHub settings.
 
 All the files in here are the template for a obsidian plugin, so most of the bootstrapping is done :D
 
@@ -37,3 +35,26 @@ The [obsidian-digital-garden](https://github.com/oleeskild/obsidian-digital-gard
 this for [Obsidian Digital Gardens](https://dg-docs.ole.dev/), but before pushing to
 your GitHub repository it does many tarnsformations we don't need if you simply want to
 copy the file.
+
+# Implementation
+
+## Generating Publish URL links
+
+For that we need to do the same quartz does: https://quartz.jzhao.xyz/advanced/paths
+
+```
+function sluggify(s: string): string {
+  return s
+    .split("/")
+    .map((segment) =>
+      segment
+        .replace(/\s/g, "-")
+        .replace(/&/g, "-and-")
+        .replace(/%/g, "-percent")
+        .replace(/\?/g, "")
+        .replace(/#/g, ""),
+    )
+    .join("/") // always use / as sep
+    .replace(/\/$/, "")
+}
+```
