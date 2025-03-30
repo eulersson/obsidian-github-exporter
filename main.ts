@@ -30,7 +30,14 @@ function base64Decode(str: string): string {
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
 	const bytes = new Uint8Array(buffer);
-	return btoa(String.fromCharCode.apply(null, bytes));
+	// Convert bytes to string in chunks to avoid stack overflow
+	let binary = '';
+	const chunkSize = 8192; // Process in 8KB chunks
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		const chunk = bytes.slice(i, Math.min(i + chunkSize, bytes.length));
+		binary += String.fromCharCode.apply(null, chunk);
+	}
+	return btoa(binary);
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
