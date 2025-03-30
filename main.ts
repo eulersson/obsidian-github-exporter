@@ -194,7 +194,7 @@ export default class GitHubExporterPlugin extends Plugin {
 					path = file.path;
 				} else {
 					// For markdown files, we want to use the target directory
-					path = `${this.settings.targetDir}/${file.path}`;
+					path = file.path;
 				}
 
 				const slugifiedPath = this.getSlugifiedPath(path);
