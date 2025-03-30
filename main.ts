@@ -124,14 +124,14 @@ export default class GitHubExporterPlugin extends Plugin {
 		});
 
 		// Add ribbon icon
-		const ribbonIconEl = this.addRibbonIcon('github', 'Publish to GitHub', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('github', 'Publish Sync to GitHub', (evt: MouseEvent) => {
 			this.publishToGitHub();
 		});
 
 		// Add command
 		this.addCommand({
-			id: 'publish-to-github',
-			name: 'Publish to GitHub',
+			id: 'publish-sync-to-github',
+			name: 'Publish Sync to GitHub',
 			callback: () => {
 				this.publishToGitHub();
 			}
@@ -139,8 +139,8 @@ export default class GitHubExporterPlugin extends Plugin {
 
 		// Add upload current file command
 		this.addCommand({
-			id: 'upload-current-file',
-			name: 'Upload Current File to GitHub',
+			id: 'publish-current-file-to-github',
+			name: 'Publish Current File to GitHub',
 			callback: () => {
 				this.uploadCurrentFile();
 			}
