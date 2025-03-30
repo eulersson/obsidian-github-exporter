@@ -15,20 +15,26 @@ declare global {
 
 // Helper functions for base64 encoding/decoding
 function base64Encode(str: string): string {
-	return btoa(unescape(encodeURIComponent(str)));
+	// Convert string to UTF-8 bytes
+	const bytes = new TextEncoder().encode(str);
+	// Convert bytes to base64
+	return btoa(String.fromCharCode.apply(null, bytes));
 }
 
 function base64Decode(str: string): string {
-	return decodeURIComponent(escape(atob(str)));
+	// Convert base64 to bytes
+	const bytes = atob(str).split('').map(c => c.charCodeAt(0));
+	// Convert bytes to UTF-8 string
+	return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-	const binary = String.fromCharCode(...new Uint8Array(buffer));
-	return base64Encode(binary);
+	const bytes = new Uint8Array(buffer);
+	return btoa(String.fromCharCode.apply(null, bytes));
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-	const binary = base64Decode(base64);
+	const binary = atob(base64);
 	const bytes = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i++) {
 		bytes[i] = binary.charCodeAt(i);
