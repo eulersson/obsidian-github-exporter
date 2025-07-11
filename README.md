@@ -1,4 +1,11 @@
-# obsidian-github-exporter
+<div align="center">
+  <a href="https://nextjs.org">
+    <picture>
+	      <img style="height: 256px" alt="obsidian-github-exporter Logo" src="./logo.png" />
+    </picture>
+  </a>
+  <h1>obsidian-github-exporter</h1>
+</div>
 
 > [!CAUTION]
 > This is a first rough draft. It works. But use at your own risk. Try it with test vaults. I still have to document it further.
