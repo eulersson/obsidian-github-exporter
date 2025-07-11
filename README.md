@@ -1,10 +1,8 @@
 <div align="center">
-  <a href="https://nextjs.org">
-    <picture>
-	      <img style="height: 256px" alt="obsidian-github-exporter Logo" src="./logo.png" />
-    </picture>
-  </a>
-  <h1>obsidian-github-exporter</h1>
+  <picture>
+    <img style="height: 256px" alt="obsidian-github-exporter Logo" src="./logo.png" />
+  </picture>
+  <h1>Obsidian GitHub Exporter</h1>
 </div>
 
 > [!CAUTION]
