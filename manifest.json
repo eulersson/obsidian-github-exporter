@@ -1,7 +1,7 @@
 {
 	"id": "github-exporter",
 	"name": "GitHub Exporter",
-	"version": "1.0.0",
+	"version": "1.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Publish selected pages and their linked media to GitHub",
 	"author": "Ramon Blanquer Ruiz",
