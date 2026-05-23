@@ -267,7 +267,7 @@ export default class GitHubExporterPlugin extends Plugin {
 
 				// Check if file exists in repository
 				const existingFile = existingFilesMap.get(`${this.settings.targetDir}/${path}`);
-				let blobSha: string;
+				let changedBlobSha: string | null = null;
 
 				if (existingFile) {
 					// Calculate SHA of new content
@@ -282,7 +282,6 @@ export default class GitHubExporterPlugin extends Plugin {
 
 					if (newSha === existingFile.sha) {
 						console.log(`File ${path} hasn't changed, skipping update`);
-						blobSha = existingFile.sha;
 					} else {
 						new Notice(`Updating ${path}...`);
 						stats.pages.updated++;
@@ -293,7 +292,7 @@ export default class GitHubExporterPlugin extends Plugin {
 							content: arrayBufferToBase64(contentBytes),
 							encoding: 'base64'
 						});
-						blobSha = blob.sha;
+						changedBlobSha = blob.sha;
 					}
 				} else {
 					new Notice(`Creating ${path}...`);
@@ -307,16 +306,19 @@ export default class GitHubExporterPlugin extends Plugin {
 						content: arrayBufferToBase64(contentBytes),
 						encoding: 'base64'
 					});
-					blobSha = blob.sha;
+					changedBlobSha = blob.sha;
 				}
 
-				// Add to changes array
-				changes.push({
-					path: `${this.settings.targetDir}/${path}`,
-					mode: '100644',
-					type: 'blob',
-					sha: blobSha
-				});
+				// Only include in tree request if the blob is new or changed;
+				// unchanged entries are inherited from base_tree.
+				if (changedBlobSha !== null) {
+					changes.push({
+						path: `${this.settings.targetDir}/${path}`,
+						mode: '100644',
+						type: 'blob',
+						sha: changedBlobSha
+					});
+				}
 
 				// Process linked media
 				const mediaFiles = this.getLinkedMedia(content);
@@ -335,7 +337,7 @@ export default class GitHubExporterPlugin extends Plugin {
 
 					// Check if media file exists in repository
 					const existingMedia = existingFilesMap.get(remoteMediaPath);
-					let mediaBlobSha: string;
+					let changedMediaBlobSha: string | null = null;
 
 					if (existingMedia) {
 						// Calculate SHA of new media content
@@ -349,7 +351,6 @@ export default class GitHubExporterPlugin extends Plugin {
 
 						if (newSha === existingMedia.sha) {
 							console.log(`Media file ${mediaPath} hasn't changed, skipping update`);
-							mediaBlobSha = existingMedia.sha;
 						} else {
 							new Notice(`Updating media ${mediaPath}...`);
 							stats.media.updated++;
@@ -360,7 +361,7 @@ export default class GitHubExporterPlugin extends Plugin {
 								content: arrayBufferToBase64(mediaContent),
 								encoding: 'base64'
 							});
-							mediaBlobSha = mediaBlob.sha;
+							changedMediaBlobSha = mediaBlob.sha;
 						}
 					} else {
 						new Notice(`Creating media ${mediaPath}...`);
@@ -372,16 +373,19 @@ export default class GitHubExporterPlugin extends Plugin {
 							content: arrayBufferToBase64(mediaContent),
 							encoding: 'base64'
 						});
-						mediaBlobSha = mediaBlob.sha;
+						changedMediaBlobSha = mediaBlob.sha;
 					}
 
-					// Add to changes array
-					changes.push({
-						path: remoteMediaPath,
-						mode: '100644',
-						type: 'blob',
-						sha: mediaBlobSha
-					});
+					// Only include in tree request if the blob is new or changed;
+					// unchanged entries are inherited from base_tree.
+					if (changedMediaBlobSha !== null) {
+						changes.push({
+							path: remoteMediaPath,
+							mode: '100644',
+							type: 'blob',
+							sha: changedMediaBlobSha
+						});
+					}
 				}
 			}
 
