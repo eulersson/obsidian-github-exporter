@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-github-exporter",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Publish selected pages and their linked media to GitHub",
 	"main": "main.js",
 	"scripts": {
