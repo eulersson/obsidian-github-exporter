@@ -431,6 +431,14 @@ export default class GitHubExporterPlugin extends Plugin {
 				}
 			}
 
+			// If nothing changed locally, skip the tree/commit/ref dance entirely —
+			// GitHub rejects empty trees with 422 "Invalid tree info".
+			if (changes.length === 0) {
+				console.log('No changes detected; skipping commit.');
+				new Notice('Nothing to publish — everything is already up to date.');
+				return;
+			}
+
 			// Create a new tree with all changes
 			const { data: newTree } = await this.octokit.request('POST /repos/{owner}/{repo}/git/trees', {
 				owner: this.settings.githubUsername,
@@ -800,9 +808,30 @@ export default class GitHubExporterPlugin extends Plugin {
 	}
 
 	initializeOctokit() {
-		// Initialize Octokit with current token
+		// Initialize Octokit with current token.
+		// Bypass HTTP cache on every request:
+		//   - custom fetch with cache: 'no-store' defeats Chromium's HTTP cache
+		//   - empty If-None-Match prevents ETag/304 reuse
+		//   - Cache-Control: no-cache asks GitHub's CDN for a fresh copy
+		//   - cache-busting query param defeats any remaining intermediary cache
+		const noCacheFetch: typeof fetch = (input, init) => {
+			let url = typeof input === 'string' ? input : (input as Request).url;
+			const method = (init?.method || 'GET').toUpperCase();
+			if (method === 'GET') {
+				url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+			}
+			return fetch(url, { ...(init || {}), cache: 'no-store' });
+		};
+
 		this.octokit = new Octokit({
 			auth: this.settings.githubToken,
+			request: {
+				fetch: noCacheFetch,
+				headers: {
+					'If-None-Match': '',
+					'Cache-Control': 'no-cache',
+				},
+			},
 		});
 	}
 
