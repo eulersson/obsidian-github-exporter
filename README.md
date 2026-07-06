@@ -17,6 +17,10 @@ This project takes as reference the already existing [obsidian-digital-garden](h
 # Features
 
 - Pages marked with the `publish: true` property will be processed.
+- Standalone `.html` files are published too, gated on an HTML comment marker
+  `<!-- publish: true -->` (since HTML has no parsed frontmatter). Quartz copies
+  them verbatim and serves them at their slugified path, e.g. `My Demo.html` ->
+  `/My-Demo.html`.
 - Linked images and audios (only `.mp3` and `.wav` for now) are collected.
 - Deleted local notes and media will be deleted on the remote repository too.
 - Copy the final published URL (quartz-style).

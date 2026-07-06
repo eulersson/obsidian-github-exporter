@@ -389,6 +389,74 @@ export default class GitHubExporterPlugin extends Plugin {
 				}
 			}
 
+			// Process standalone HTML files.
+			// HTML has no parsed frontmatter in Obsidian, so instead of `publish: true`
+			// we gate on an HTML comment marker `<!-- publish: true -->` anywhere in the file.
+			// Quartz's Assets() emitter copies these verbatim and serves them at their
+			// slugified path (e.g. `My Demo.html` -> `/My-Demo.html`). No media scan is
+			// needed since standalone HTML doesn't use Obsidian `![[...]]` embeds.
+			const htmlFiles = this.app.vault.getFiles().filter(file => file.extension === 'html');
+			for (const file of htmlFiles) {
+				const content = await this.app.vault.read(file);
+				if (!/<!--\s*publish:\s*true\s*-->/.test(content)) {
+					continue;
+				}
+
+				const path = file.path;
+				localPaths.add(path);
+
+				const existingFile = existingFilesMap.get(`${this.settings.targetDir}/${path}`);
+				let changedBlobSha: string | null = null;
+
+				const encoder = new TextEncoder();
+				const contentBytes = encoder.encode(content);
+
+				if (existingFile) {
+					// Calculate SHA of new content using Git's blob object format
+					const header = `blob ${contentBytes.length}\0`;
+					const headerBytes = encoder.encode(header);
+					const combinedBytes = new Uint8Array(headerBytes.length + contentBytes.length);
+					combinedBytes.set(headerBytes);
+					combinedBytes.set(contentBytes, headerBytes.length);
+					const newSha = await calculateSHA1(combinedBytes.buffer);
+
+					if (newSha === existingFile.sha) {
+						console.log(`HTML file ${path} hasn't changed, skipping update`);
+					} else {
+						new Notice(`Updating ${path}...`);
+						stats.pages.updated++;
+						const { data: blob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
+							owner: this.settings.githubUsername,
+							repo: this.settings.githubRepo,
+							content: arrayBufferToBase64(contentBytes),
+							encoding: 'base64'
+						});
+						changedBlobSha = blob.sha;
+					}
+				} else {
+					new Notice(`Creating ${path}...`);
+					stats.pages.added++;
+					const { data: blob } = await this.octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
+						owner: this.settings.githubUsername,
+						repo: this.settings.githubRepo,
+						content: arrayBufferToBase64(contentBytes),
+						encoding: 'base64'
+					});
+					changedBlobSha = blob.sha;
+				}
+
+				// Only include in tree request if the blob is new or changed;
+				// unchanged entries are inherited from base_tree.
+				if (changedBlobSha !== null) {
+					changes.push({
+						path: `${this.settings.targetDir}/${path}`,
+						mode: '100644',
+						type: 'blob',
+						sha: changedBlobSha
+					});
+				}
+			}
+
 			// Get the attachments folder path from Obsidian config
 			const attachmentsFolder = (this.app.vault as any).getConfig('attachmentFolderPath') || 'Attachments';
 
