@@ -126,6 +126,7 @@ export default class GitHubExporterPlugin extends Plugin {
 		this.addCommand({
 			id: 'publish-sync-to-github',
 			name: 'Publish Sync to GitHub',
+			icon: 'upload-cloud',
 			callback: () => {
 				this.publishToGitHub();
 			}
@@ -135,6 +136,7 @@ export default class GitHubExporterPlugin extends Plugin {
 		this.addCommand({
 			id: 'publish-current-file-to-github',
 			name: 'Publish Current File to GitHub',
+			icon: 'file-up',
 			callback: () => {
 				this.uploadCurrentFile();
 			}
@@ -144,6 +146,7 @@ export default class GitHubExporterPlugin extends Plugin {
 		this.addCommand({
 			id: 'toggle-publish',
 			name: 'Toggle Publish Property',
+			icon: 'toggle-right',
 			callback: () => {
 				this.togglePublishProperty();
 			}
@@ -153,6 +156,7 @@ export default class GitHubExporterPlugin extends Plugin {
 		this.addCommand({
 			id: 'copy-published-url',
 			name: 'Copy Published URL',
+			icon: 'link',
 			callback: () => {
 				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 				const file: TFile | null = activeView?.file || this.app.workspace.getActiveFile();
@@ -760,28 +764,58 @@ export default class GitHubExporterPlugin extends Plugin {
 	}
 
 	getLinkedMedia(content: string): string[] {
-		// Handle ![[filename]] syntax without requiring spaces
-		const mediaRegex = /!\[\[([^\]]+\.(png|jpg|jpeg|gif|mp3|wav|mp4|pdf|ogg|m4a))\]\]/g;
-		const matches = content.matchAll(mediaRegex);
-		
+		const exts = 'png|jpg|jpeg|gif|mp3|wav|mp4|pdf|ogg|m4a';
+
+		// Collect raw link targets from both supported syntaxes:
+		// 1. Obsidian embeds: ![[filename.ext]], optionally followed by a `|` tail
+		//    (the Image Captions plugin's caption, or a `|300` size) or a `#anchor`.
+		// 2. Markdown images:  ![alt](path.ext) — including the linked-image form
+		//    [![alt](path.ext)](url), where only the inner ![alt](path) matches here.
+		//    The path may be URL-encoded (%20) and/or wrapped in <...>.
+		const rawTargets: string[] = [];
+		const wikiRegex = new RegExp(`!\\[\\[([^\\[\\]|#]+\\.(?:${exts}))(?:[|#][^\\]]*)?\\]\\]`, 'gi');
+		const mdRegex = new RegExp(`!\\[[^\\]]*\\]\\(\\s*<?([^)>\\s]+\\.(?:${exts}))[^)]*\\)`, 'gi');
+		for (const m of content.matchAll(wikiRegex)) rawTargets.push(m[1]);
+		for (const m of content.matchAll(mdRegex)) rawTargets.push(m[1]);
+
 		// Get the attachments folder path from Obsidian config
 		const attachmentsFolder = (this.app.vault as any).getConfig('attachmentFolderPath') || 'Attachments';
-		
-		return Array.from(matches).map(match => {
-			const filename = match[1];
-			// First try to find the file in the attachments folder
-			const attachmentPath = `${attachmentsFolder}/${filename}`;
-			const attachmentFile = this.app.vault.getAbstractFileByPath(attachmentPath);
+
+		const resolved = rawTargets.map(raw => {
+			// Skip external URLs (e.g. ![](https://.../img.png)) — not local media.
+			if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) {
+				return null;
+			}
+			// Markdown links percent-encode spaces; decode and normalise the path.
+			let target = raw;
+			try {
+				target = decodeURIComponent(raw);
+			} catch {
+				// leave as-is if it isn't valid percent-encoding
+			}
+			target = target.replace(/^\.?\//, '');
+			const filename = target.split('/').pop() || target;
+
+			// First honour the path exactly as written (relative to the vault root).
+			const exactFile = this.app.vault.getAbstractFileByPath(target);
+			if (exactFile instanceof TFile) {
+				return exactFile.path;
+			}
+			// Then try the attachments folder by filename.
+			const attachmentFile = this.app.vault.getAbstractFileByPath(`${attachmentsFolder}/${filename}`);
 			if (attachmentFile instanceof TFile) {
 				return attachmentFile.path;
 			}
-			// If not found in attachments, try the root
+			// Finally try the vault root by filename.
 			const rootFile = this.app.vault.getAbstractFileByPath(filename);
 			if (rootFile instanceof TFile) {
 				return rootFile.path;
 			}
 			return null;
 		}).filter((path): path is string => path !== null);
+
+		// De-duplicate: the same media may be referenced more than once.
+		return Array.from(new Set(resolved));
 	}
 
 	getSlugifiedPath(path: string): string {
