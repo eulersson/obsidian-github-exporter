@@ -16,6 +16,9 @@ export function createOctokit(settings: GitHubExporterSettings): Octokit {
 		if (method === 'GET') {
 			url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
 		}
+		// requestUrl is not a drop-in for Octokit's request.fetch hook: it has a
+		// different signature and no cache option, which is the whole point here.
+		// eslint-disable-next-line no-restricted-globals
 		return fetch(url, { ...(init || {}), cache: 'no-store' });
 	};
 

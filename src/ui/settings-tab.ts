@@ -99,8 +99,10 @@ export class GitHubExporterSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Private callout types')
+			// eslint-disable-next-line obsidianmd/ui/sentence-case -- 'private'/'secret' are literal callout names
 			.setDesc('Comma-separated callout types stripped from published notes, e.g. private, secret.')
 			.addText(text => text
+				// eslint-disable-next-line obsidianmd/ui/sentence-case -- literal example value, not a label
 				.setPlaceholder('private')
 				.setValue(this.plugin.settings.mask.privateCallouts.join(', '))
 				.onChange(async (value) => {
@@ -122,6 +124,10 @@ export class GitHubExporterSettingTab extends PluginSettingTab {
 						pattern: '', isRegex: true, flags: 'g', inCodeBlocks: false, label: '',
 					});
 					await this.plugin.saveSettings();
+					// Deprecated since 1.13.0 in favour of getSettingDefinitions, which
+					// would raise minAppVersion to 1.13.0. Still supported; revisit when
+					// that floor is acceptable.
+					// eslint-disable-next-line @typescript-eslint/no-deprecated
 					this.display();
 				}));
 
@@ -140,6 +146,10 @@ export class GitHubExporterSettingTab extends PluginSettingTab {
 						pattern: '', isRegex: true, flags: 'g', label: '',
 					});
 					await this.plugin.saveSettings();
+					// Deprecated since 1.13.0 in favour of getSettingDefinitions, which
+					// would raise minAppVersion to 1.13.0. Still supported; revisit when
+					// that floor is acceptable.
+					// eslint-disable-next-line @typescript-eslint/no-deprecated
 					this.display();
 				}));
 
@@ -218,6 +228,10 @@ export class GitHubExporterSettingTab extends PluginSettingTab {
 			.onClick(async () => {
 				remove();
 				await this.plugin.saveSettings();
+				// Deprecated since 1.13.0 in favour of getSettingDefinitions, which
+				// would raise minAppVersion to 1.13.0. Still supported; revisit when
+				// that floor is acceptable.
+				// eslint-disable-next-line @typescript-eslint/no-deprecated
 				this.display();
 			}));
 	}

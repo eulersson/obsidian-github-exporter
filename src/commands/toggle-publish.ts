@@ -4,7 +4,7 @@ import { App, MarkdownView, Notice, TFile } from 'obsidian';
 export async function togglePublishProperty(app: App): Promise<void> {
 	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
 	if (!activeView) {
-		new Notice('No active markdown file');
+		new Notice('No active Markdown file');
 		return;
 	}
 

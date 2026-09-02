@@ -13,7 +13,7 @@ export function copyPublishedUrl(app: App, settings: GitHubExporterSettings): vo
 	}
 
 	if (!settings.hostedUrl) {
-		new Notice('Please set the Hosted URL in plugin settings to generate published URLs');
+		new Notice('Please set the hosted URL in plugin settings to generate published links');
 		return;
 	}
 
