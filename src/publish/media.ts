@@ -1,6 +1,14 @@
 import { App, TFile } from 'obsidian';
 
+/** Media Obsidian renders inline, so notes reference it with embed syntax. */
 const MEDIA_EXTENSIONS = 'png|jpg|jpeg|gif|mp3|wav|mp4|pdf|ogg|m4a';
+
+/**
+ * Attachments Obsidian cannot render. A note points at these with an ordinary
+ * link (`[[game.sb3]]`) rather than an embed, so they are collected from links
+ * too — otherwise the published note links to a file that was never uploaded.
+ */
+const LINKED_EXTENSIONS = 'sb3';
 
 export function getAttachmentsFolder(app: App): string {
 	return (app.vault as unknown as { getConfig(key: string): string })
@@ -21,11 +29,20 @@ export function getLinkedMedia(app: App, content: string): string[] {
 	// 2. Markdown images:  ![alt](path.ext) — including the linked-image form
 	//    [![alt](path.ext)](url), where only the inner ![alt](path) matches here.
 	//    The path may be URL-encoded (%20) and/or wrapped in <...>.
+	// The leading `!` is required for embeddable media (a plain [[photo.png]]
+	// link is not an embed) but optional for LINKED_EXTENSIONS, which are only
+	// ever written as plain links.
 	const rawTargets: string[] = [];
-	const wikiRegex = new RegExp(`!\\[\\[([^\\[\\]|#]+\\.(?:${MEDIA_EXTENSIONS}))(?:[|#][^\\]]*)?\\]\\]`, 'gi');
-	const mdRegex = new RegExp(`!\\[[^\\]]*\\]\\(\\s*<?([^)>\\s]+\\.(?:${MEDIA_EXTENSIONS}))[^)]*\\)`, 'gi');
-	for (const m of content.matchAll(wikiRegex)) if (m[1]) rawTargets.push(m[1]);
-	for (const m of content.matchAll(mdRegex)) if (m[1]) rawTargets.push(m[1]);
+	const groups = [
+		{ extensions: MEDIA_EXTENSIONS, embed: '!' },
+		{ extensions: LINKED_EXTENSIONS, embed: '!?' },
+	];
+	for (const { extensions, embed } of groups) {
+		const wikiRegex = new RegExp(`${embed}\\[\\[([^\\[\\]|#]+\\.(?:${extensions}))(?:[|#][^\\]]*)?\\]\\]`, 'gi');
+		const mdRegex = new RegExp(`${embed}\\[[^\\]]*\\]\\(\\s*<?([^)>\\s]+\\.(?:${extensions}))[^)]*\\)`, 'gi');
+		for (const m of content.matchAll(wikiRegex)) if (m[1]) rawTargets.push(m[1]);
+		for (const m of content.matchAll(mdRegex)) if (m[1]) rawTargets.push(m[1]);
+	}
 
 	const attachmentsFolder = getAttachmentsFolder(app);
 

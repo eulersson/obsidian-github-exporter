@@ -21,8 +21,11 @@ This project takes as reference the already existing [obsidian-digital-garden](h
   `<!-- publish: true -->` (since HTML has no parsed frontmatter). Quartz copies
   them verbatim and serves them at their slugified path, e.g. `My Demo.html` ->
   `/My-Demo.html`.
-- Linked media is collected and uploaded alongside the note: `png`, `jpg`,
+- Embedded media is collected and uploaded alongside the note: `png`, `jpg`,
   `jpeg`, `gif`, `mp4`, `mp3`, `wav`, `ogg`, `m4a`, `pdf`.
+- Scratch projects (`sb3`) are uploaded as attachments too. Obsidian cannot
+  render them, so they are picked up from ordinary links (`[[game.sb3]]` or
+  `[starter](game.sb3)`) as well as embeds.
 - Deleted local notes and media will be deleted on the remote repository too.
 - Copy the final published URL (quartz-style).
 - Mask sensitive passages so they never leave the vault — see
