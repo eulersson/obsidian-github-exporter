@@ -58,11 +58,12 @@ export function applyMask(content: string, settings: MaskSettings): MaskResult {
 	// whose removal creates a fresh match would otherwise produce a different
 	// file on every publish, and an endless stream of commits.
 	const second = collect(output, settings);
-	if (second.spans.length > 0) {
+	const unstable = second.spans[0];
+	if (unstable) {
 		throw new MaskError(
-			`Masking is not stable — ${second.spans[0].reason} still matches after masking. ` +
+			`Masking is not stable — ${unstable.reason} still matches after masking. ` +
 			'Fix the rule so it cannot match its own output.',
-			second.spans[0].line,
+			unstable.line,
 		);
 	}
 
@@ -144,6 +145,23 @@ function collectRegions(content: string, codeRanges: Range[], ranges: Range[], s
 	}
 }
 
+/** A source line paired with its character offset in the document. */
+interface DocLine {
+	text: string;
+	start: number;
+}
+
+/** Splits `content` into lines tagged with where each one begins. */
+function splitLines(content: string): DocLine[] {
+	const out: DocLine[] = [];
+	let offset = 0;
+	for (const text of content.split('\n')) {
+		out.push({ text, start: offset });
+		offset += text.length + 1;
+	}
+	return out;
+}
+
 function collectSections(
 	content: string,
 	codeRanges: Range[],
@@ -151,26 +169,21 @@ function collectSections(
 	ranges: Range[],
 	spans: MaskSpan[],
 ): void {
-	const lines = content.split('\n');
-	const starts: number[] = [];
-	let offset = 0;
-	for (const line of lines) {
-		starts.push(offset);
-		offset += line.length + 1;
-	}
+	const lines = splitLines(content);
 
 	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const tag = new RegExp(SECTION_TAG).exec(line);
+		const current = lines[i];
+		if (!current) continue;
+		const tag = new RegExp(SECTION_TAG).exec(current.text);
 		if (!tag) continue;
 
-		const tagStart = starts[i] + tag.index;
+		const tagStart = current.start + tag.index;
 		if (overlaps(codeRanges, tagStart, tagStart + tag[0].length)) continue;
 		// Already inside a masked region — the tag goes with it.
 		if (overlaps(claimed, tagStart, tagStart + tag[0].length)) continue;
 
-		const heading = HEADING.exec(line);
-		if (!heading) {
+		const level = HEADING.exec(current.text)?.[1]?.length;
+		if (level === undefined) {
 			throw new MaskError(
 				'%%mask-section%% is only valid on a heading line. ' +
 				'Use %%mask-start%% / %%mask-end%% to mask anything else.',
@@ -179,24 +192,25 @@ function collectSections(
 		}
 
 		// The section runs until the next heading of the same or a higher level.
-		const level = heading[1].length;
 		let end = content.length;
 		for (let j = i + 1; j < lines.length; j++) {
-			const next = HEADING.exec(lines[j]);
-			if (!next || next[1].length > level) continue;
-			if (overlaps(codeRanges, starts[j], starts[j] + lines[j].length)) continue;
-			end = starts[j];
+			const candidate = lines[j];
+			if (!candidate) continue;
+			const next = HEADING.exec(candidate.text);
+			if (!next || (next[1]?.length ?? 0) > level) continue;
+			if (overlaps(codeRanges, candidate.start, candidate.start + candidate.text.length)) continue;
+			end = candidate.start;
 			break;
 		}
 
-		ranges.push({ start: starts[i], end });
+		ranges.push({ start: current.start, end });
 		spans.push({
 			line: i + 1,
-			reason: `section: ${line.replace(new RegExp(SECTION_TAG), '').trim()}`,
-			text: content.slice(starts[i], end),
+			reason: `section: ${current.text.replace(new RegExp(SECTION_TAG), '').trim()}`,
+			text: content.slice(current.start, end),
 		});
 		// Skip the lines we just consumed.
-		while (i + 1 < lines.length && starts[i + 1] < end) i++;
+		while (i + 1 < lines.length && (lines[i + 1]?.start ?? end) < end) i++;
 	}
 }
 
@@ -210,29 +224,25 @@ function collectCallouts(
 	if (privateCallouts.length === 0) return;
 	const wanted = new Set(privateCallouts.map(type => type.toLowerCase()));
 
-	const lines = content.split('\n');
-	const starts: number[] = [];
-	let offset = 0;
-	for (const line of lines) {
-		starts.push(offset);
-		offset += line.length + 1;
-	}
+	const lines = splitLines(content);
 
 	for (let i = 0; i < lines.length; i++) {
-		const callout = CALLOUT.exec(lines[i]);
-		if (!callout || !wanted.has(callout[1].toLowerCase())) continue;
-		if (overlaps(codeRanges, starts[i], starts[i] + lines[i].length)) continue;
+		const current = lines[i];
+		if (!current) continue;
+		const type = CALLOUT.exec(current.text)?.[1]?.toLowerCase();
+		if (!type || !wanted.has(type)) continue;
+		if (overlaps(codeRanges, current.start, current.start + current.text.length)) continue;
 
 		// A callout owns every following line that continues the blockquote.
 		let last = i;
-		while (last + 1 < lines.length && /^\s*>/.test(lines[last + 1])) last++;
+		while (last + 1 < lines.length && /^\s*>/.test(lines[last + 1]?.text ?? '')) last++;
 
-		const end = last + 1 < lines.length ? starts[last + 1] : content.length;
-		ranges.push({ start: starts[i], end });
+		const end = last + 1 < lines.length ? (lines[last + 1]?.start ?? content.length) : content.length;
+		ranges.push({ start: current.start, end });
 		spans.push({
 			line: i + 1,
-			reason: `callout: ${callout[1].toLowerCase()}`,
-			text: content.slice(starts[i], end),
+			reason: `callout: ${type}`,
+			text: content.slice(current.start, end),
 		});
 		i = last;
 	}

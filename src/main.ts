@@ -20,7 +20,7 @@ export default class GitHubExporterPlugin extends Plugin {
 		this.octokit = createOctokit(this.settings);
 
 		this.addRibbonIcon('github', 'Publish sync to GitHub', () => {
-			this.publish();
+			void this.publish();
 		});
 
 		this.addCommand({
@@ -99,18 +99,16 @@ export default class GitHubExporterPlugin extends Plugin {
 			}
 
 			if (plan.files.length === 0) {
-				console.log('No changes detected; skipping commit.');
 				new Notice('Nothing to publish — everything is already up to date.');
 				return;
 			}
 
 			const stats = await applyPublishPlan(this.octokit, this.settings, plan, {
 				message: only ? `Update ${only.path}` : undefined,
-				onProgress: message => console.log(message),
+				onProgress: message => console.debug(message),
 			});
 
 			const report = formatStats(stats);
-			console.log('Final statistics:', report);
 			new Notice(`Successfully published to GitHub!\n${report}`);
 
 			// Masked text that is still in the published history needs a rewrite,
@@ -140,7 +138,7 @@ export default class GitHubExporterPlugin extends Plugin {
 	private plan(only?: TFile): Promise<PublishPlan> {
 		return computePublishPlan(this.app, this.octokit, this.settings, {
 			only,
-			onProgress: message => console.log(message),
+			onProgress: message => console.debug(message),
 		});
 	}
 

@@ -24,8 +24,8 @@ export function getLinkedMedia(app: App, content: string): string[] {
 	const rawTargets: string[] = [];
 	const wikiRegex = new RegExp(`!\\[\\[([^\\[\\]|#]+\\.(?:${MEDIA_EXTENSIONS}))(?:[|#][^\\]]*)?\\]\\]`, 'gi');
 	const mdRegex = new RegExp(`!\\[[^\\]]*\\]\\(\\s*<?([^)>\\s]+\\.(?:${MEDIA_EXTENSIONS}))[^)]*\\)`, 'gi');
-	for (const m of content.matchAll(wikiRegex)) rawTargets.push(m[1]);
-	for (const m of content.matchAll(mdRegex)) rawTargets.push(m[1]);
+	for (const m of content.matchAll(wikiRegex)) if (m[1]) rawTargets.push(m[1]);
+	for (const m of content.matchAll(mdRegex)) if (m[1]) rawTargets.push(m[1]);
 
 	const attachmentsFolder = getAttachmentsFolder(app);
 

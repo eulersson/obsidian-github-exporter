@@ -23,7 +23,7 @@ export async function togglePublishProperty(app: App): Promise<void> {
 
 	if (frontmatterMatch) {
 		// File has frontmatter, toggle publish property
-		const frontmatter = frontmatterMatch[1];
+		const frontmatter = frontmatterMatch[1] ?? '';
 		hasPublish = frontmatter.includes('publish: true') || frontmatter.includes('publish: "true"');
 
 		if (hasPublish) {

@@ -1,16 +1,3 @@
-import * as crypto from 'crypto';
-
-// Add type declaration for Web Crypto API
-declare global {
-	interface Window {
-		crypto: {
-			subtle: {
-				digest(algorithm: string, data: ArrayBuffer): Promise<ArrayBuffer>;
-			};
-		};
-	}
-}
-
 export function base64Encode(str: string): string {
 	// Convert string to UTF-8 bytes
 	const bytes = new TextEncoder().encode(str);
@@ -36,19 +23,15 @@ export function base64ToString(base64: string): string {
 	return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
-// Helper function to calculate SHA-1 hash
+/**
+ * SHA-1 via the Web Crypto API, which Obsidian provides on both desktop and
+ * mobile. Deliberately no Node `crypto` fallback: importing it would emit a
+ * top-level `require` that fails to load the plugin on mobile.
+ */
 export async function calculateSHA1(data: ArrayBuffer): Promise<string> {
-	// Use the Web Crypto API if available, otherwise fall back to Node.js crypto
-	if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-		const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-	} else {
-		// Fallback to Node.js crypto
-		const hash = crypto.createHash('sha1');
-		hash.update(Buffer.from(data));
-		return hash.digest('hex');
-	}
+	const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

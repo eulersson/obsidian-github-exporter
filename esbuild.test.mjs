@@ -15,4 +15,6 @@ await esbuild.build({
 	outdir: 'test-build',
 	external: ['obsidian'],
 	logLevel: 'warning',
+	// package.json sets "type": "module", so emit .cjs to keep these CommonJS
+	outExtension: { '.js': '.cjs' },
 });

@@ -31,15 +31,15 @@ export function computeCodeRanges(text: string): CodeRanges {
 	for (const line of lines) {
 		const lineEnd = offset + line.length;
 		if (fenceStart < 0) {
-			const open = FENCE_OPEN.exec(line);
-			if (open) {
+			const marker = FENCE_OPEN.exec(line)?.[1];
+			if (marker) {
 				fenceStart = offset;
-				fenceMarker = open[1];
+				fenceMarker = marker;
 			}
 		} else {
 			// A fence closes on a line of the same character, at least as long,
 			// with nothing else on it.
-			const char = fenceMarker[0];
+			const char = fenceMarker.charAt(0);
 			const closer = new RegExp(`^ {0,3}\\${char}{${fenceMarker.length},}\\s*$`);
 			if (closer.test(line)) {
 				ranges.push({ start: fenceStart, end: lineEnd });
@@ -80,11 +80,12 @@ function collectInlineCode(text: string, from: number, to: number, into: Range[]
 
 export function mergeRanges(ranges: Range[]): Range[] {
 	if (ranges.length === 0) return [];
-	const sorted = [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
-	const merged: Range[] = [sorted[0]];
-	for (const range of sorted.slice(1)) {
+	const [first, ...rest] = [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
+	if (!first) return [];
+	const merged: Range[] = [{ ...first }];
+	for (const range of rest) {
 		const last = merged[merged.length - 1];
-		if (range.start <= last.end) {
+		if (last && range.start <= last.end) {
 			last.end = Math.max(last.end, range.end);
 		} else {
 			merged.push({ ...range });
@@ -138,15 +139,15 @@ export function normalizeBlankLines(text: string): string {
 	let fenceMarker = '';
 	for (const line of lines) {
 		if (!inFence) {
-			const open = FENCE_OPEN.exec(line);
-			if (open) {
+			const marker = FENCE_OPEN.exec(line)?.[1];
+			if (marker) {
 				inFence = true;
-				fenceMarker = open[1];
+				fenceMarker = marker;
 				out.push(line);
 				continue;
 			}
 		} else {
-			const char = fenceMarker[0];
+			const char = fenceMarker.charAt(0);
 			const closer = new RegExp(`^ {0,3}\\${char}{${fenceMarker.length},}\\s*$`);
 			if (closer.test(line)) {
 				inFence = false;
