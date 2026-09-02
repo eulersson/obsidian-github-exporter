@@ -1,8 +1,49 @@
-/*
+/* Private callouts are stripped at publish time — make that obvious while editing. */
+.callout[data-callout="private"],
+.callout[data-callout="secret"] {
+	--callout-color: 200, 80, 80;
+	--callout-icon: lucide-eye-off;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Publish preview and dry-run report */
+.ghx-preview .ghx-output,
+.ghx-report .ghx-files {
+	max-height: 45vh;
+	overflow: auto;
+}
 
-If your plugin does not need CSS, delete this file.
+.ghx-preview .ghx-output {
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	padding: var(--size-4-3);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
 
-*/
+.ghx-subtle {
+	color: var(--text-muted);
+	white-space: pre-line;
+}
+
+.ghx-spans,
+.ghx-report .ghx-files {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.ghx-error,
+.ghx-warning {
+	border-left: 3px solid var(--text-error);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	padding: var(--size-4-2) var(--size-4-3);
+	margin-bottom: var(--size-4-3);
+}
+
+.ghx-warning {
+	border-left-color: var(--text-warning);
+}
+
+.ghx-rule .setting-item-control input[type="text"] {
+	min-width: 0;
+}
